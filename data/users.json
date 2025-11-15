@@ -1,0 +1,34 @@
+[
+  {
+    "userId": "admin01",
+    "password": "pass1234",
+    "name": "최고 관리자",
+    "phoneNumber": "010-1234-5678",
+    "email": "hms1234@gmail.com",
+    "role": "ADMIN"
+  },
+  {
+    "userId": "csr001",
+    "password": "csr001",
+    "name": "이광수",
+    "phoneNumber": "010-9101-1121",
+    "email": "lee1234@gmail.com",
+    "role": "CSR"
+  },
+  {
+    "userId": "csr002",
+    "password": "csr002",
+    "name": "유재석",
+    "phoneNumber": "010-1415-1617",
+    "email": "yu1234@gmail.com",
+    "role": "CSR"
+  },
+  {
+    "userId": "admin02",
+    "password": "pass1234",
+    "name": "김종국",
+    "phoneNumber": "010-1819-2021",
+    "email": "kim1234@gmail.com",
+    "role": "ADMIN"
+  }
+]
