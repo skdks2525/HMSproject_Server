@@ -75,6 +75,16 @@ public class ClientHandler implements Runnable {
                 case "CHECKIN":    
                 default:    
                     return "ERROR:Unknown command " + command;    
+                    
+                case "GET_USERS":
+                    //서비스에서 모든 유저 가져오기
+                    java.util.List<User> users = authService.getAllUsers();
+                    
+                    StringBuilder sb = new StringBuilder("USER_LIST:");
+                    for (User u : users) {
+                        sb.append(u.getId()).append(",").append(u.getRole()).append("/");
+                    }
+                    return sb.toString();  
             }
         }
 

@@ -5,6 +5,7 @@
 package server.service;
 import server.model.User;
 import server.repository.UserRepository;
+import java.util.List;
 
 /**
  * 인증관련 로직 처리하는 클래스
@@ -35,5 +36,17 @@ public class AuthService {
            System.out.println("비밀번호 불일치");
            return null;
        }
+   }
+   public List<User> getAllUsers(){
+       return userRepository.findAll();
+   }
+   public boolean addUser(String id, String pw, String role){
+           if(userRepository.findByUsername(id) != null){
+               return false;
+           }
+           return userRepository.add(new User(id, pw, role));    
+   }
+   public boolean deleteUser(String id){
+           return userRepository.delete(id);    
    }
 }

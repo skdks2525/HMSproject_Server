@@ -5,7 +5,8 @@
 package server.repository;
 import server.model.User;
 import java.io.*;
-import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
 /**
  *
  * @author user
@@ -36,6 +37,68 @@ public class UserRepository {
         }
         
         return null; //사용자를 찾기 못함
+    } 
+    
+    public synchronized List<User> findAll(){
+        List<User> userList = new ArrayList<>();
+        File file = new File(USER_FILE_PATH);
+        
+        if(!file.exists()) return userList; // 빈 리스트 반환
+        
+        try(BufferedReader reader = new BufferedReader(new FileReader(file))){
+            String line;
+            reader.readLine();
+            
+            while((line = reader.readLine()) != null){
+                String[] parts = line.split(",");
+                if(parts.length == 3){
+                    userList.add(new User(parts[ID_INDEX].trim(), parts[PW_INDEX].trim(), parts[ROLE_INDEX] ));
+                }
+            }
+        }
+        catch(IOException ex){
+            ex.printStackTrace();
+        }
+        return userList;
+    }
+    
+    public synchronized boolean add(User user){
+        try{
+            BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE_PATH, true)); 
+            writer.newLine();
+            
+            String line = String.format("%s, %s, %s", user.getId(), user.getPassword(), user.getRole());
+            writer.write(line);
+            return true;
+        }
+        catch(IOException ex){
+            ex.printStackTrace();
+            return false;
+        }
+    }
+    
+    public synchronized boolean delete(String id){
+        List<User> allUsers = findAll();
+        
+        boolean removed = allUsers.removeIf(u -> u.getId().equals(id));
+        
+        if(!removed) return false;
+        
+        try{
+            BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE_PATH)); 
+            writer.write("ID,Password,Role");
+            
+            for(User u : allUsers){
+                writer.newLine();
+                String line = String.format("%s, %s, %s", u.getId(), u.getPassword(), u.getRole());
+                writer.write(line);
+            }
+            return true;
+        }
+        catch(IOException ex){
+            ex.printStackTrace();
+            return false;
+        }
     }
 }
 
