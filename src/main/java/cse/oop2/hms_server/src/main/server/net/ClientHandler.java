@@ -5,6 +5,7 @@
 package cse.oop2.hms_server.src.main.server.net;
 import cse.oop2.hms_server.src.main.server.service.AuthService;
 //import cse.oop2.hms_server.src.main.server.service.ReservationService;
+import cse.oop2.hms_server.src.main.server.model.User;
 import java.io.BufferedReader;
 import java.io.*;
 import java.net.*;
@@ -60,9 +61,9 @@ public class ClientHandler implements Runnable {
                         String username = parts[1];
                         String password = parts[2];
                         
-                        boolean success = authService.login(username, password);
-                        if(success){
-                            return "LOGIN_SUCCESS"; //로그인 성공    
+                        User user = authService.login(username, password);
+                        if(user != null){
+                            return "LOGIN_SUCCESS:" + user.getRole(); //로그인 성공    
                         }
                         else{    
                             return "LOGIN_FAIL:Invalid credentials"; // 로그인 실패    

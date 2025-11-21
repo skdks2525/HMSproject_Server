@@ -18,22 +18,22 @@ public class AuthService {
    }
    
    //이제부터 로그인 시도
-   public boolean login(String id, String pw){
+   public User login(String id, String pw){
        User user = userRepository.findByUsername(id);
        
        // 사용자가 존재하지 않음
        if(user == null){
            System.out.println("사용자를 찾을 수 없음");
-           return false;
+           return null;
        }
        // 비밀번호 일치
        if(user.getPassword().equals(pw)){
            System.out.println("로그인 성공");
-           return true;
+           return user;
        }
        else{
            System.out.println("비밀번호 불일치");
-           return false;
+           return null;
        }
    }
 }
