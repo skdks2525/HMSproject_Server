@@ -1,12 +1,7 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package server.net;
-import server.service.AuthService;
+import server.service.*;
 //import cse.oop2.hms_server.src.main.server.service.ReservationService;
-import server.model.User;
-import java.io.BufferedReader;
+import server.model.*;
 import java.io.*;
 import java.net.*;
 
@@ -18,12 +13,13 @@ public class ClientHandler implements Runnable {
     
     private final Socket clientSocket;
     private final AuthService authService;
+    private final HotelService hotelService;
     //private final Reservation reservationService;
     
     public ClientHandler(Socket socket){
         this.clientSocket = socket;
-        
         this.authService = new AuthService(); // 사용할 서비스 객체 초기화
+        this.hotelService = new HotelService();
         //this.reservation = new ReservationService();
     }
     
@@ -84,7 +80,53 @@ public class ClientHandler implements Runnable {
                     for (User u : users) {
                         sb.append(u.getId()).append(",").append(u.getRole()).append("/");
                     }
-                    return sb.toString();  
+                    return sb.toString();
+                
+                case "GET_ALL_ROOMS":
+                    StringBuilder roomSb = new StringBuilder("ROOM_LIST:");
+                    for(Room r : hotelService.getAllRooms()){
+                        roomSb.append(r.toString()).append("/");
+                    }
+                    return roomSb.toString();
+                    
+                case "GET_ROOM":
+                    if (parts.length == 2) {
+                        Room r = hotelService.getRoom(parts[1]);
+                        return (r != null) ? "ROOM_INFO:" + r.toString() : "ERROR:Not Found";
+                    }
+                    return "ERROR:Format";
+                        
+                case "GET_RES_BY_NAME":
+                    if (parts.length == 2) {
+                        StringBuilder resSb = new StringBuilder("RES_LIST:");
+                        for (Reservation r : hotelService.getReservationsByName(parts[1])) {
+                            resSb.append(r.toString()).append("/");           
+                        }
+                        return resSb.toString();
+                    }    
+                    return "ERROR:Format";
+                        
+                case "GET_AVAILABLE_ROOMS":
+                    // 날짜 로직 생략, 전체 방 목록 반환 (추후 구현)
+                    StringBuilder availSb = new StringBuilder("ROOM_LIST:");
+                    for (Room r : hotelService.getAllRooms()) {
+                        availSb.append(r.toString()).append("/");
+                    }
+                    return availSb.toString();
+                    
+                case "ADD_RESERVATION":
+                    if (parts.length == 5) { // ADD_RESERVATION:방:이름:입실:퇴실
+                        boolean ok = hotelService.createReservation(parts[1], parts[2], parts[3], parts[4]);
+                        return ok ? "RESERVE_SUCCESS" : "RESERVE_FAIL";
+                    }
+                    return "ERROR:Format";
+                    
+                case "DELETE_RESERVATION":
+                    if (parts.length == 2) {
+                        boolean ok = hotelService.cancelReservation(parts[1]);
+                        return ok ? "DELETE_SUCCESS" : "DELETE_FAIL";
+                    }
+                    return "ERROR:Format";
             }
         }
 

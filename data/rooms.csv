@@ -1,0 +1,4 @@
+RoomNum,Type,Price,Capacity
+101,Standard,100000,2
+102,Standard,100000,2
+201,Suite,200000,4

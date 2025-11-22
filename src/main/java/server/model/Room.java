@@ -1,13 +1,36 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package server.model;
-
 /**
  *
  * @author user
  */
 public class Room {
+    private String roomNumber;
+    private String type;
+    private int price;
+    private int capacity;
     
+    public Room(String roomNumber, String type, int price, int capacity){
+        this.roomNumber = roomNumber;
+        this.type = type;
+        this.price = price;
+        this.capacity = capacity;
+    }
+    
+    public String getRoomNumber(){
+        return roomNumber;
+    }
+    public String getType(){
+        return type;
+    }
+    public int getString(){
+        return price;
+    }
+    public int getCapacity(){
+        return capacity;
+    }
+    
+    @Override
+    public String toString(){
+        return roomNumber + "," + type + "," + price + "," + capacity;
+    }
 }
