@@ -22,8 +22,8 @@ public class RoomRepository {
             
             while((line = reader.readLine()) != null){
                 String[] parts = line.split(",");
-                if(parts.length >= 4){
-                    RoomList.add(new Room(parts[0].trim(), parts[1].trim(), Integer.parseInt(parts[2]), Integer.parseInt(parts[3])));
+                if(parts.length >= 5){
+                    RoomList.add(new Room(parts[0].trim(), parts[1].trim(), Integer.parseInt(parts[2].trim()), Integer.parseInt(parts[3].trim()), parts[4].trim()));
                 }
             }
         }

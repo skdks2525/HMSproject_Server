@@ -143,12 +143,36 @@ public class ClientHandler implements Runnable {
                     }
                     return availSb.toString();
                     
-                case "ADD_RESERVATION":
-                    if (parts.length == 5) { // ADD_RESERVATION:방:이름:입실:퇴실
-                        boolean ok = hotelService.createReservation(parts[1], parts[2], parts[3], parts[4]);
-                        return ok ? "RESERVE_SUCCESS" : "RESERVE_FAIL";
+                case "CHECK_AVAILABILITY":
+                    String[] checkParts = request.split(":");
+                    if (checkParts.length == 3) {
+                        String types = hotelService.getAvailableRoomTypes(checkParts[1], checkParts[2]);
+                        return "AVAILABLE_TYPES:" + types;
                     }
                     return "ERROR:Format";
+                    
+               case "ADD_RESERVATION":
+                    // ADD_RESERVATION:타입:이름:입실:퇴실:인원:폰
+                    String[] resParts = request.split(":");
+                    
+                    if (resParts.length == 7) { 
+                        // createReservationByType 호출 (자동 배정 로직)
+                        String assignedRoom = hotelService.createReservationByType(
+                            resParts[1], // Type
+                            resParts[2], // Name
+                            resParts[3], // In
+                            resParts[4], // Out
+                            Integer.parseInt(resParts[5]), // GuestNum
+                            resParts[6]  // Phone
+                        );
+                        
+                        if (assignedRoom != null) {
+                            return "RESERVE_SUCCESS:" + assignedRoom;
+                        } else {
+                            return "RESERVE_FAIL:No Room Available";
+                        }
+                    }
+                    return "ERROR:Format (Expected 7 parts)";
                     
                 case "DELETE_RESERVATION":
                     if (parts.length == 2) {

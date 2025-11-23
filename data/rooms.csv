@@ -1,4 +1,5 @@
-RoomNum,Type,Price,Capacity
-101,Standard,100000,2
-102,Standard,100000,2
-201,Suite,200000,4
+RoomNum,Type,Price,Capacity,Description
+101,Standard,220000,2,무료 Wi-Fi/에어컨/TV
+102,Standard,220000,2,무료 Wi-Fi/에어컨/TV
+201,Deluxe,440000,4,무료 Wi-Fi/미니바/조식포함
+301,Suite,800000,4,오션뷰/전용라운지/킹사이즈침대
