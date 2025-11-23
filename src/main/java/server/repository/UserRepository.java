@@ -12,10 +12,12 @@ import java.util.List;
  * @author user
  */
 public class UserRepository {
-    private static final String USER_FILE_PATH = "data/users.csv"; //user.csv 파일경로 (혹시나 안되면 data/ 빼보셈)
+    private static final String USER_FILE_PATH = "data/users.csv"; // CSV 파일 경로 (단일 경로)
     private static final int ID_INDEX = 0;
     private static final int PW_INDEX = 1;
     private static final int ROLE_INDEX = 2;
+    private static final int PHONE_INDEX = 3;
+    private static final int NAME_INDEX = 4;
     
     /**
      * 아이디로 사용자 한 명을 조회.
@@ -24,14 +26,16 @@ public class UserRepository {
      * @return User 또는 null
      */
     public synchronized User findByUsername(String id) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(USER_FILE_PATH))) {
+        File f = new File(USER_FILE_PATH);
+        try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
             String line = reader.readLine(); // 헤더 스킵
             while((line = reader.readLine()) != null){
                 String[] parts = line.split(",");
-                
-                 if(parts.length == 3 && parts[0].equals(id)){ //id 일치하면 User객체 생성 후 반환
-                     return new User(parts[ID_INDEX], parts[PW_INDEX], parts[ROLE_INDEX]);
-                 }
+                if(parts.length == 5 && parts[ID_INDEX].trim().equals(id)){
+                    String phone = parts[PHONE_INDEX].trim();
+                    String name = parts[NAME_INDEX].trim();
+                    return new User(parts[ID_INDEX].trim(), name, parts[PW_INDEX].trim(), parts[ROLE_INDEX].trim(), phone);
+                }
             }
         }
         catch(IOException ex){
@@ -59,8 +63,10 @@ public class UserRepository {
             
             while((line = reader.readLine()) != null){
                 String[] parts = line.split(",");
-                if(parts.length == 3){
-                    userList.add(new User(parts[ID_INDEX].trim(), parts[PW_INDEX].trim(), parts[ROLE_INDEX] ));
+                if(parts.length == 5){
+                    String phone = parts[PHONE_INDEX].trim();
+                    String name = parts[NAME_INDEX].trim();
+                    userList.add(new User(parts[ID_INDEX].trim(), name, parts[PW_INDEX].trim(), parts[ROLE_INDEX].trim(), phone));
                 }
             }
         }
@@ -79,11 +85,11 @@ public class UserRepository {
         boolean needHeader = !file.exists() || file.length() == 0;
         try(BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))){
             if(needHeader){
-                writer.write("ID,Password,Role");
+                writer.write("ID,Password,Role,Phone,Name");
                 writer.newLine();
             }
-            // 기존 스타일 유지: 공백 포함 포맷 사용
-            String line = String.format("%s, %s, %s", user.getId(), user.getPassword(), user.getRole());
+            // CSV 형식: 공백 없이 쉼표로만 구분
+            String line = String.format("%s,%s,%s,%s,%s", user.getId(), user.getPassword(), user.getRole(), user.getPhone(), user.getName());
             writer.write(line);
             writer.newLine();
             return true;
@@ -104,10 +110,10 @@ public class UserRepository {
         if(!removed) return false;
         
         try(BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE_PATH))){
-            writer.write("ID,Password,Role");
+            writer.write("ID,Password,Role,Phone,Name");
             for(User u : allUsers){
                 writer.newLine();
-                String line = String.format("%s, %s, %s", u.getId(), u.getPassword(), u.getRole());
+                String line = String.format("%s,%s,%s,%s,%s", u.getId(), u.getPassword(), u.getRole(), u.getPhone(), u.getName());
                 writer.write(line);
             }
             return true;
@@ -118,7 +124,37 @@ public class UserRepository {
         }
     }
 
+    /** 사용자 정보 수정 (비밀번호/권한/전화번호 변경) */
+    public synchronized boolean update(User updated) {
+        List<User> all = findAll();
+        boolean found = false;
+        for(User u : all) {
+            if(u.getId().equals(updated.getId())) {
+                u.setName(updated.getName());
+                u.setPassword(updated.getPassword());
+                u.setRole(updated.getRole());
+                u.setPhone(updated.getPhone());
+                found = true;
+                break;
+            }
+        }
+        if(!found) return false;
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE_PATH))) {
+            writer.write("ID,Password,Role,Phone,Name");
+            for(User u : all) {
+                writer.newLine();
+                String line = String.format("%s,%s,%s,%s,%s", u.getId(), u.getPassword(), u.getRole(), u.getPhone(), u.getName());
+                writer.write(line);
+            }
+            return true;
+        } catch(IOException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+    }
+
     // saveUser 메서드 기능을 add에 통합 (중복 제거)
+
 }
 
 

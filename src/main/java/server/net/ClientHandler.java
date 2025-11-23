@@ -75,12 +75,41 @@ public class ClientHandler implements Runnable {
                 case "GET_USERS":
                     //서비스에서 모든 유저 가져오기
                     java.util.List<User> users = authService.getAllUsers();
-                    
                     StringBuilder sb = new StringBuilder("USER_LIST:");
                     for (User u : users) {
-                        sb.append(u.getId()).append(",").append(u.getRole()).append("/");
+                        sb.append(u.getId()).append(",").append(u.getPassword()).append(",").append(u.getRole()).append(",").append(u.getPhone()).append(",").append(u.getName()).append("/");
                     }
                     return sb.toString();
+                case "ADD_USER":
+                    // 형식(필수): ADD_USER:id:name:pw:role:phone  => 총 6토큰, 모두 공백불가
+                    {
+                        String[] addParts = request.split(":");
+                        if(addParts.length != 6) return "ADD_FAIL:Format"; 
+                        String id = addParts[1];
+                        String name = addParts[2];
+                        String pw = addParts[3];
+                        String role = addParts[4];
+                        String phone = addParts[5];
+                        if(blank(id) || blank(name) || blank(pw) || blank(role) || blank(phone)) return "ADD_FAIL:FieldRequired";
+                        boolean ok = authService.addUser(id, name, pw, role, phone);
+                        return ok ? "ADD_SUCCESS" : "ADD_FAIL:DuplicateOrError";
+                    }
+                case "DELETE_USER":
+                    // 형식: DELETE_USER:id
+                    if(parts.length >= 2) {
+                        boolean ok = authService.deleteUser(parts[1]);
+                        return ok ? "DELETE_SUCCESS" : "DELETE_FAIL";
+                    }
+                    return "DELETE_FAIL:Format";
+                case "MODIFY_USER":
+                    // 형식(필수): MODIFY_USER:id:name:pw:role:phone  => 총 6토큰, 모두 공백뵘8가
+                    {
+                        String[] mParts = request.split(":");
+                        if(mParts.length != 6) return "MODIFY_FAIL:Format";
+                        if(blank(mParts[1]) || blank(mParts[2]) || blank(mParts[3]) || blank(mParts[4]) || blank(mParts[5])) return "MODIFY_FAIL:FieldRequired";
+                        boolean ok = authService.modifyUser(mParts[1], mParts[2], mParts[3], mParts[4], mParts[5]);
+                        return ok ? "MODIFY_SUCCESS" : "MODIFY_FAIL";
+                    }
                 
                 case "GET_ALL_ROOMS":
                     StringBuilder roomSb = new StringBuilder("ROOM_LIST:");
@@ -134,5 +163,10 @@ public class ClientHandler implements Runnable {
                 ex.printStackTrace();
                 return "ERROR:Internal server error: " + ex.getMessage();
         }
+    }
+
+    // 공백/널 체크 유틸
+    private boolean blank(String s){
+        return s == null || s.trim().isEmpty();
     }
 }

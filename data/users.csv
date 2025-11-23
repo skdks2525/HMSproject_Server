@@ -1,4 +1,13 @@
-ID,Password,Role
-admin,1234,Manager
-csr01,csrpass,CSR
-customer1,1234,Customer
+ID,Password,Role,Phone,Name
+admin,1234,Manager,010-0000-0001,관리자
+csr01,csrpass,CSR,010-0000-0002,직원1
+customer1,1234,Customer,010-0000-0003,고객1
+wnwoghd,wnwoghd,CSR,01020272280,홍길동
+qotjdwns,qotjdwns,Customer,01022222244,김철수
+wnwnwn,wnwnwn,Customer,01000001111,이영희
+qoqoqo,qoqoqo,Customer,01033334444,박민수wnwn,wnwn,Customer,01015151515,wnwn
+wnwn,wnwn,Customer,wnwn,wnwn
+wnwowo,wnwowo,Customer,01013315555,wnwowo
+qoqo,qoqo,CSR,01033333333,qoqo
+www,www,Customer,www,www
+wowowowo,wowowowo,Customer,010-3333-4444,wowowowo

@@ -22,7 +22,7 @@ public class AuthService {
     * 일반 사용자 회원가입 (role=Customer)
     * @return 성공 시 User, 실패 시 null
     */
-   public synchronized User registerUser(String id, String pw){
+   public synchronized User registerUser(String id, String name, String pw, String phone){
        if(id == null || id.isEmpty() || pw == null || pw.isEmpty()){
            System.out.println("아이디/비밀번호 누락");
            return null;
@@ -32,7 +32,7 @@ public class AuthService {
            System.out.println("이미 존재하는 아이디");
            return null;
        }
-       User user = new User(id, pw, "Customer");
+       User user = new User(id, name, pw, "Customer", phone);
        if(userRepository.add(user)){
            System.out.println("회원가입 성공");
            return user;
@@ -63,13 +63,29 @@ public class AuthService {
    public List<User> getAllUsers(){
        return userRepository.findAll();
    }
-   public boolean addUser(String id, String pw, String role){
+   public boolean addUser(String id, String name, String pw, String role, String phone){
+       if(id == null || id.trim().isEmpty()) return false;
+       if(name == null || name.trim().isEmpty()) return false;
+       if(pw == null || pw.trim().isEmpty()) return false;
+       if(role == null || role.trim().isEmpty()) return false;
+       if(phone == null || phone.trim().isEmpty()) return false;
        if(userRepository.existsByUsername(id)){
            return false;
        }
-       return userRepository.add(new User(id, pw, role));
+       return userRepository.add(new User(id.trim(), name.trim(), pw.trim(), role.trim(), phone.trim()));
    }
    public boolean deleteUser(String id){
            return userRepository.delete(id);    
+   }
+   public boolean modifyUser(String id, String name, String pw, String role, String phone){
+       if(id == null || id.trim().isEmpty()) return false;
+       if(name == null || name.trim().isEmpty()) return false;
+       if(pw == null || pw.trim().isEmpty()) return false;
+       if(role == null || role.trim().isEmpty()) return false;
+       if(phone == null || phone.trim().isEmpty()) return false;
+       User existing = userRepository.findByUsername(id);
+       if(existing == null) return false;
+       User updated = new User(id.trim(), name.trim(), pw.trim(), role.trim(), phone.trim());
+       return userRepository.update(updated);
    }
 }

@@ -1,0 +1,10 @@
+server\model\Room.class
+server\repository\UserRepository.class
+server\model\User.class
+server\repository\RoomRepository.class
+server\net\ClientHandler.class
+server\repository\ReservationRepository.class
+server\service\HotelService.class
+server\net\ServerMain.class
+server\service\AuthService.class
+server\model\Reservation.class
