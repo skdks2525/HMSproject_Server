@@ -14,18 +14,21 @@ public class ClientHandler implements Runnable {
     private final Socket clientSocket;
     private final AuthService authService;
     private final HotelService hotelService;
+    private final MenuService menuService;
     //private final Reservation reservationService;
     
     public ClientHandler(Socket socket){
         this.clientSocket = socket;
         this.authService = new AuthService(); // 사용할 서비스 객체 초기화
         this.hotelService = new HotelService();
+        this.menuService = new MenuService();
         //this.reservation = new ReservationService();
     }
     
     @Override
     public void run(){
         String request;
+        
         try{
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(),true);
@@ -43,14 +46,14 @@ public class ClientHandler implements Runnable {
             System.out.println("클라이언트 통신 오류");
             ex.printStackTrace();
         }
+
     }
     
     private String handleRequest(String request){
         try{
             String[] parts = request.split(":", 3);
             String command = parts[0];
-        
-                
+            
             switch(command){
                 case "LOGIN":
                     if(parts.length == 3){
@@ -94,6 +97,7 @@ public class ClientHandler implements Runnable {
                         boolean ok = authService.addUser(id, name, pw, role, phone);
                         return ok ? "ADD_SUCCESS" : "ADD_FAIL:DuplicateOrError";
                     }
+                
                 case "DELETE_USER":
                     // 형식: DELETE_USER:id
                     if(parts.length >= 2) {
@@ -110,6 +114,104 @@ public class ClientHandler implements Runnable {
                         boolean ok = authService.modifyUser(mParts[1], mParts[2], mParts[3], mParts[4], mParts[5]);
                         return ok ? "MODIFY_SUCCESS" : "MODIFY_FAIL";
                     }
+                    
+                case "GET_MENUS":
+                    //서비스에서 모든 메뉴 가져오기
+                    java.util.List<Menu> menus = menuService.getAllMenus();
+                    StringBuilder sb2 = new StringBuilder("MENU_LIST:");
+                    for (Menu m : menus) {
+                        String isAvailableStr = String.valueOf(m.getIsAvailable());// m.getIsAvailable() ? "판매중" : "판매중지"; // boolean 값을 판매중, 판매중지로 보내기
+                        sb2.append(m.getMenuId()).append(",").append(m.getName()).append(",").append(m.getPrice()).append(",").append(m.getCategory()).append(",").append(isAvailableStr).append("/");
+                    }
+                    return sb2.toString();
+                    
+                case "ADD_MENU":
+                    // 형식: ADD_MENU:menuId:name:price:category:isavailable
+                {
+                    String[] menuParts = request.split(":");
+                    // 형식 검사: 토큰이 6개인지 확인
+                    if (menuParts.length != 6) return "ADD_FAIL:Format";
+                    
+                    String menuId = menuParts[1];
+                    String name = menuParts[2];
+                    String priceStr = menuParts[3];
+                    String category = menuParts[4];
+                    String isavailableStr = menuParts[5];
+                    
+                    if (blank(menuId) || blank(name) || blank(priceStr) || blank(category) || blank(isavailableStr)) {
+                        return "ADD_FAIL:FieldRequired";
+                    }
+                    
+                    // 가격 (price) 숫자 변환 및 오류 처리
+                    int price;
+                    try {
+                        price = Integer.parseInt(priceStr.trim());
+                    }
+                    catch (NumberFormatException e) {
+                        return "ADD_FAIL:InvaildPriceFormat";
+                    }
+                    
+                    // 판매 여부 변환
+                    boolean isAvailable = Boolean.parseBoolean(isavailableStr.trim());
+                    
+                    // Service 호출
+                    boolean ok = menuService.AddMenu(menuId, name, price, category, isAvailable);
+                    
+                    // 결과 반환
+                    return ok ? "ADD_SUCCESS" : "ADD_FAIL:DuplicateIdOrError";
+                }
+                
+                case "DELETE_MENU":
+                    // 형식: DELETE_MENU:menuId (총 2개 토큰)
+                {
+                    if (parts.length != 2) return "DELETE_FAIL:Format";
+                    String menuId = parts[1];
+                    
+                    if (blank(menuId)) {
+                        return "DELETE_FAIL:FieldRequired";
+                    }
+                    
+                    // Service 호출
+                    boolean ok = menuService.deleteMenu(menuId);
+                    
+                    // 결과 반환
+                    return ok ? "DELETE_SUCCESS" : "DELETE_FAIL:NotFound";
+                }
+                
+                case "UPDATE_MENU":
+                {
+                    String[] menuParts = request.split(":");
+                    // 형식 검사: 토큰이 6개인지 확인
+                    if (menuParts.length != 6) return "UPDATE_FAIL:Format";
+                    
+                    String menuId = menuParts[1];
+                    String name = menuParts[2];
+                    String priceStr = menuParts[3];
+                    String category = menuParts[4];
+                    String isavailableStr = menuParts[5];
+                    
+                    if (blank(menuId) || blank(name) || blank(priceStr) || blank(category) || blank(isavailableStr)) {
+                        return "UPDATE_FAIL:FieldRequired";
+                    }
+                    
+                    // 가격 (price) 숫자 변환 및 오류 처리
+                    int price;
+                    try {
+                        price = Integer.parseInt(priceStr.trim());
+                    }
+                    catch (NumberFormatException e) {
+                        return "UPDATE_FAIL:InvaildPriceFormat";
+                    }
+                    
+                    // 판매 여부 변환
+                    boolean isAvailable = Boolean.parseBoolean(isavailableStr.trim());
+                    
+                    // Service 호출
+                    boolean ok = menuService.updateMenu(menuId, name, price, category, isAvailable);
+                    
+                    // 결과 반환
+                    return ok ? "UPDATE_SUCCESS" : "UPDATE_FAIL:NotFound";
+                }
                 
                 case "GET_ALL_ROOMS":
                     StringBuilder roomSb = new StringBuilder("ROOM_LIST:");
