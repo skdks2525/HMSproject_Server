@@ -39,6 +39,59 @@ public class HotelService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 지정한 날짜 범위의 일별 객실 매출 합계를 반환
+     * 결제 정보가 "Paid"인 예약만 포함
+     * @param startDate yyyy-MM-dd
+     * @param endDate yyyy-MM-dd
+     * @return Map<LocalDate,Integer> (LinkedHashMap 날짜 순서 유지)
+     */
+    public Map<LocalDate, Integer> getRoomSalesByDateRange(String startDate, String endDate) {
+        DateTimeFormatter dateOnlyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        // 입력으로 받은 문자열 날짜(startDate, endDate)를 LocalDate로 변환합니다.
+        // 여기서는 yyyy-MM-dd 포맷을 가정합니다. 파싱 실패 시 DateTimeParseException이 발생합니다.
+        LocalDate start = LocalDate.parse(startDate, dateOnlyFormatter);
+        LocalDate end = LocalDate.parse(endDate, dateOnlyFormatter);
+
+        // 날짜(키) -> 매출(값) 매핑을 만들되, 날짜 순서를 유지하기 위해 LinkedHashMap을 사용합니다.
+        // 먼저 요청된 범위의 모든 날짜를 0으로 초기화하면 이후 누적 합산이 쉬워집니다.
+        Map<LocalDate, Integer> salesMap = new LinkedHashMap<>();
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) salesMap.put(d, 0);
+
+        // 저장소에서 모든 예약을 읽어 옵니다. (CSV 기반 Repository의 현재 스냅샷)
+        List<Reservation> all = resRepo.findAll();
+
+        for (Reservation r : all) {
+            try {
+                // 결제 상태가 'Paid'인 예약만 포함합니다(대소문자 무시).
+                if (r.getPaymentInfo() == null || !r.getPaymentInfo().equalsIgnoreCase("Paid")) continue;
+
+                // 예약의 체크인/체크아웃 문자열을 LocalDate로 파싱합니다.
+                // Reservation 내부에 저장된 날짜 형식이 yyyy-MM-dd 가정입니다.
+                LocalDate in = LocalDate.parse(r.getCheckInDate(), dateOnlyFormatter);
+                LocalDate out = LocalDate.parse(r.getCheckOutDate(), dateOnlyFormatter);
+
+                // 해당 예약이 사용한 방의 가격을 조회합니다. RoomRepository에서 방 번호로 찾습니다.
+                // 방 정보가 없으면 가격을 0으로 처리(안정성 확보).
+                Room room = roomRepo.findByNumber(r.getRoomNumber());
+                int price = (room != null) ? room.getPrice() : 0;
+
+                // 예약은 [checkIn, checkOut) 구간의 각 하룻밤에 대해 매출을 발생시킵니다.
+                // 따라서 checkIn부터 (checkOut - 1)일까지 반복하며 해당 날짜가 요청 범위에 포함되면 해당 날짜의 합계에 더합니다.
+                for (LocalDate d = in; d.isBefore(out); d = d.plusDays(1)) {
+                    // salesMap에 날짜 키가 존재하고, 요청한 범위(start..end)에 속한 날짜만 누적합니다.
+                    if (!d.isBefore(start) && !d.isAfter(end)) {
+                        salesMap.put(d, salesMap.getOrDefault(d, 0) + price);
+                    }
+                }
+            } catch (Exception ex) {
+                // 파싱(날짜 형식) 오류 등 예외가 발생하면 해당 예약은 집계에서 건너뛰고 계속 진행합니다.
+                // 필요시 로깅을 추가하여 데이터 문제를 추적하는 것이 좋습니다.
+            }
+        }
+        return salesMap;
+    }
+
 // [기능 1] 예약 가능한 방 타입 목록 반환
     public String getAvailableRoomTypes(String reqIn, String reqOut) {
         synchronized (LOCK) {

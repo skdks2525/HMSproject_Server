@@ -124,6 +124,31 @@ public class ClientHandler implements Runnable {
                         sb2.append(m.getMenuId()).append(",").append(m.getName()).append(",").append(m.getPrice()).append(",").append(m.getCategory()).append(",").append(isAvailableStr).append("/");
                     }
                     return sb2.toString();
+                case "GET_ROOM_SALES":
+                    // 형식: GET_ROOM_SALES:yyyy-MM-dd:yyyy-MM-dd
+                    // 요청 형식 검사 후 HotelService에 집계를 위임합니다.
+                    // 클라이언트는 시작/종료 날짜(yyyy-MM-dd)를 전달하고,
+                    // 서버는 "ROOM_SALES:yyyy-MM-dd=amount,yyyy-MM-dd=amount,..." 형태의 한 줄 응답을 반환합니다.
+                    // LinkedHashMap을 사용해 날짜 순서가 유지되므로 클라이언트가 순서대로 그래프를 그릴 수 있습니다.
+                    if (parts.length == 3) {
+                        String start = parts[1];
+                        String end = parts[2];
+
+                        // HotelService에서 날짜별 매출을 계산해서 맵으로 돌려받습니다.
+                        java.util.Map<java.time.LocalDate, Integer> sales = hotelService.getRoomSalesByDateRange(start, end);
+
+                        // 응답 문자열을 구성합니다. 각 항목은 date=value(날짜=매출)로 콤마로 구분됩니다.
+                        //ex ROOM_SALES:2025-10-01=220000,2025-10-02=440000,...
+                        StringBuilder salesSb = new StringBuilder("ROOM_SALES:");
+                        boolean first = true;
+                        for (java.util.Map.Entry<java.time.LocalDate, Integer> en : sales.entrySet()) {
+                            if (!first) salesSb.append(",");
+                            salesSb.append(en.getKey().toString()).append("=").append(en.getValue());
+                            first = false;
+                        }
+                        return salesSb.toString();
+                    }
+                    return "ERROR:Format";
                     
                 case "ADD_MENU":
                     // 형식: ADD_MENU:menuId:name:price:category:isavailable
