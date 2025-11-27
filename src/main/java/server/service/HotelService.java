@@ -241,5 +241,39 @@ public class HotelService {
                 System.out.println("날짜 파싱 오류 (ID: " + r.getReservationId() + "): " + e.getMessage());
             }
         }
-    }        
+    }   
+    
+    public String getRoomDashboard() {
+        StringBuilder sb = new StringBuilder("DASHBOARD_LIST:");
+        List<Room> rooms = roomRepo.findAll();
+        List<Reservation> reservations = resRepo.findAll();
+        
+        for (Room r : rooms) {
+            String status = "Empty";
+            String guestName = "-";
+            String resId = "-";
+            // [추가] 기본값 설정
+            int guestNum = 0; 
+            String phone = "-";
+            
+            for (Reservation res : reservations) {
+                if (res.getRoomNumber().equals(r.getRoomNumber())) {
+                    // 체크아웃 된 건 제외하고 현재 유효한 예약 표시
+                    if (!"CheckedOut".equals(res.getReservationStatus())) {
+                         status = res.getReservationStatus(); 
+                         guestName = res.getGuestName();
+                         resId = res.getReservationId();
+                         // [추가] 정보 가져오기
+                         guestNum = res.getGuestNum();
+                         phone = res.getPhoneNumber();
+                         break; 
+                    }
+                }
+            }
+            // 포맷: 방번호,타입,가격,상태,고객명,예약ID,인원,폰 (8개 정보)
+            sb.append(String.format("%s,%s,%d,%s,%s,%s,%d,%s/", 
+                    r.getRoomNumber(), r.getType(), r.getPrice(), status, guestName, resId, guestNum, phone));
+        }
+        return sb.toString();
+    }
 }

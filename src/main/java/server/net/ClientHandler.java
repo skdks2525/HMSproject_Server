@@ -53,7 +53,7 @@ public class ClientHandler implements Runnable {
     private String handleRequest(String request){
         try{
             String[] parts = request.split(":", 3);
-            String command = parts[0];
+            String command = parts[0].trim();
             
             switch(command){
                 case "LOGIN":
@@ -72,9 +72,11 @@ public class ClientHandler implements Runnable {
                     else{    
                         return "ERROR:Invalid LOGIN format"; // 형식 오류
                     }    
-                case "CHECKIN":    
+                case "CHECKIN":
+                    
                 default:    
-                    return "ERROR:Unknown command " + command;    
+                    System.out.println("❌ [오류] 알 수 없는 명령어: [" + command + "]");
+                    return "ERROR:Unknown command " + command;  
                     
                 case "GET_USERS":
                     //서비스에서 모든 유저 가져오기
@@ -113,14 +115,17 @@ public class ClientHandler implements Runnable {
                         boolean ok = authService.modifyUser(mParts[1], mParts[2], mParts[3], mParts[4], mParts[5]);
                         return ok ? "MODIFY_SUCCESS" : "MODIFY_FAIL";
                     }
-                case "UPDATE_PAYMENT:":
+                case "UPDATE_PAYMENT":
                     String[] p = request.split(":");
                     if(p.length == 7){
                         boolean ok = hotelService.processPayment(
                         p[1],p[2],p[3],p[4],p[5],p[6]);
                         return ok ? "PAYMENT_SUCCESS" : "PAYMENT_FAIL";
                     }
-                    return "ERROR:Format";
+                    else {
+                        System.out.println("[Server] 결제 요청 포맷 오류. 받은 개수: " + p.length);
+                        return "ERROR:Format Error (Expected 7 parts)";
+                    }
                     
                 case "GET_MENUS":
                     java.util.List<Menu> menus = menuService.getAllMenus();

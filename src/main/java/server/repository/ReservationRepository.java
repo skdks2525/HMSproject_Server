@@ -7,7 +7,7 @@ import java.util.*;
  * @author user
  */
 public class ReservationRepository {
-    private static final String RES_FILE_PATH = "data/reservation.csv";
+    private static final String RES_FILE_PATH = "data/reservations.csv";
     
     public synchronized List<Reservation> findAll(){
         List<Reservation> list = new ArrayList<>();
@@ -65,18 +65,25 @@ public class ReservationRepository {
                 bw.write(r.toString());
             }
             return true;
-        } catch (IOException e) { return false; }
+        }
+        catch (IOException ex) {
+            return false;
+        }
     }
     
     public synchronized boolean updateStatus(String resId, String reservationStatus) {
         List<Reservation> all = findAll();
+        boolean found = false;
         for (Reservation r : all) {
             if (r.getReservationId().equals(resId)) {
                 r.setReservationStatus(reservationStatus);
-                return rewriteFile(all);
+                found = true;
+                break;
             }
         }
-        return false;
+        if(!found)
+            return false;
+        return rewriteFile(all);
     }
     
     public synchronized boolean delete(String resId) {
