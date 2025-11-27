@@ -27,14 +27,10 @@ public class MenuService {
      * @param isAvailable 판매 여부
      * @return 등록되었는가?
      */
-    public boolean AddMenu(String menuId, String name, int price, String category, boolean isAvailable) {
-        // ID, 이름, 가격을 가진 newMenu 객체 생성
-        Menu newMenu = new Menu(menuId, name, price, category, isAvailable);
-        
-        // 판매 여부 선택
+    public boolean AddMenu(String menuId, String name, int price, String category, boolean isAvailable, int stock) {
+        Menu newMenu = new Menu(menuId, name, price, category, isAvailable, stock);
         newMenu.setIsAvailable(isAvailable);
-        
-        // 리포지토리의 save 반환(호출)
+        newMenu.setStock(stock);
         return menuRepository.save(newMenu);
     }
     
@@ -48,22 +44,20 @@ public class MenuService {
      * @return 업데이트되었는가?
      */
     
-    public boolean updateMenu(String menuId, String name, int price, String category, boolean isAvailable) {
+    public boolean updateMenu(String menuId, String name, int price, String category, boolean isAvailable, int stock) {
         Optional<Menu> menuOptional = menuRepository.findById(menuId);
-        
-        // Optional 안에 값이 있다면(=Menu 객체)
         if (menuOptional.isPresent()) {
-            // Optional에 존재하는 Menu 객체를 가진 existingMenu 변수 선언
             Menu updatingMenu = menuOptional.get();
-            
-            // setter 메서드 호출
             updatingMenu.setName(name);
             updatingMenu.setPrice(price);
             updatingMenu.setCategory(category);
             updatingMenu.setIsAvailable(isAvailable);
-            
-            // update 메서드는 전달받은 객체를 updatedMenu라는 이름으로 받음
-            // 이름, 가격 등 필드들은 이미 변경된 상태
+            // 판매중지로 바꾸면 재고는 0으로 자동 변경
+            if (!isAvailable) {
+                updatingMenu.setStock(0);
+            } else {
+                updatingMenu.setStock(stock);
+            }
             menuRepository.update(updatingMenu);
             return true;
         }

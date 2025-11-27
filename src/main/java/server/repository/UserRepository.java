@@ -88,14 +88,14 @@ public class UserRepository {
                 writer.write("ID,Password,Role,Phone,Name");
                 writer.newLine();
             }
-            // CSV 형식: 공백 없이 쉼표로만 구분
             String line = String.format("%s,%s,%s,%s,%s", user.getId(), user.getPassword(), user.getRole(), user.getPhone(), user.getName());
             writer.write(line);
             writer.newLine();
+            System.out.println("[UserRepository] users.csv에 사용자 추가됨: " + line);
             return true;
         }
         catch(IOException ex){
-            System.out.println("CVS 저장 오류");
+            System.out.println("[UserRepository] users.csv 저장 오류: " + ex.getMessage());
             ex.printStackTrace();
             return false;
         }
@@ -104,11 +104,8 @@ public class UserRepository {
     /** 아이디로 사용자 삭제 */
     public synchronized boolean delete(String id){
         List<User> allUsers = findAll();
-        
         boolean removed = allUsers.removeIf(u -> u.getId().equals(id));
-        
         if(!removed) return false;
-        
         try(BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE_PATH))){
             writer.write("ID,Password,Role,Phone,Name");
             for(User u : allUsers){
@@ -116,9 +113,11 @@ public class UserRepository {
                 String line = String.format("%s,%s,%s,%s,%s", u.getId(), u.getPassword(), u.getRole(), u.getPhone(), u.getName());
                 writer.write(line);
             }
+            System.out.println("[UserRepository] users.csv에서 사용자 삭제됨: " + id);
             return true;
         }
         catch(IOException ex){
+            System.out.println("[UserRepository] users.csv 삭제 오류: " + ex.getMessage());
             ex.printStackTrace();
             return false;
         }
@@ -146,8 +145,10 @@ public class UserRepository {
                 String line = String.format("%s,%s,%s,%s,%s", u.getId(), u.getPassword(), u.getRole(), u.getPhone(), u.getName());
                 writer.write(line);
             }
+            System.out.println("[UserRepository] users.csv에서 사용자 수정됨: " + updated.getId());
             return true;
         } catch(IOException ex) {
+            System.out.println("[UserRepository] users.csv 수정 오류: " + ex.getMessage());
             ex.printStackTrace();
             return false;
         }

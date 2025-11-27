@@ -1,0 +1,3 @@
+SaleId,GuestName,OrderTime,TotalPrice,Payment,FoodName
+S-404690,주재홍,2025-11-27 17:33:24,2212,Paid,약과|test09
+S-498341,주재홍,2025-11-27 17:34:58,3424,Paid,test09|test07|약과

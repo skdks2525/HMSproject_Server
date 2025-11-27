@@ -29,69 +29,56 @@ public class MenuRepository {
     // 예쁘게 출력하는(=setPrettyPrinting()) Gson 객체 생성
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create(); */
     
+    /**
+     * MenuRepository 생성자: menus.csv 파일이 없으면 생성하고, 헤더와 빈 데이터로 초기화
+     */
     public MenuRepository() {
-        File file = new File(MENU_FILE_PATH); // file 객체 생성 (파일 경로에 대한?)
-        // =파일이 존재하지 않다면 (파일 존재 여부 검사)
+        File file = new File(MENU_FILE_PATH); // 메뉴 CSV 파일 객체 생성
         if(!file.exists()) {
-            // 예외 처리 구문 (try를 if로 생각하면 편함)
             try {
-                // 부모 디렉토리를 file 객체로 생성 후 반환(=getParentFile())
-                // 부모 디렉토리가 존재하지 않을 경우, 해당 부모 디렉토리를 포함한 상위 디렉토리들을 재귀적으로 모두 생성
-                file.getParentFile().mkdirs();
+                file.getParentFile().mkdirs(); // 상위 디렉토리까지 모두 생성
                 if (file.createNewFile()) {
-                    // 빈 json 파일 생성
+                    // 파일이 새로 생성된 경우, 헤더와 빈 데이터로 초기화
                     saveAll(new ArrayList<>());
                 }
-            }
-            // 예외 발생 시 처리하는 구문
-            catch (IOException e) {
+            } catch (IOException e) {
                 System.err.println("파일 생성 중 오류");
             }
         }
     }
     
     public List<Menu> findAll() {
+        // menus.csv 파일을 읽어 모든 메뉴 정보를 List<Menu>로 반환
         List<Menu> menus = new ArrayList<>();
         File file = new File(MENU_FILE_PATH);
-        
-        
-        // 한글을 못 읽어서 넣음
         try (BufferedReader reader = new BufferedReader(
             new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
-            
-            // 첫 번째 라인 (헤더) 스킵
-            reader.readLine();
-            
+            reader.readLine(); // 첫 줄(헤더) 스킵
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
-                
                 String[] parts = line.split(",");
-                
-                if (parts.length >= 5) {
-                    try {
-                        String menuId = parts[0].trim();
-                        String name = parts[1].trim();
+                if (parts.length >= 6) {
+                // import model.ItemCategory;
+                // import com.google.gson.Gson; // Java 객체를 JSON 문자열로, JSON 문자열을 Java 객체로 변환해주는 역할
+                // import com.google.gson.GsonBuilder;
+                // import com.google.gson.reflect.TypeToken; // 제네릭 타입 정보를 런타임까지 보존하기 위함. List<String>, <MyObject> 등
                         int price = Integer.parseInt(parts[2].trim());
                         String category = parts[3].trim();
                         String availabilityStr = parts[4].trim();
-                        
+                        int stock = Integer.parseInt(parts[5].trim());
+                        // CSV의 판매여부는 "판매중"/"판매중지"로 저장됨
                         boolean isAvailable = availabilityStr.equals("판매중");
-                        menus.add(new Menu(menuId, name, price, category, isAvailable));
-                    }
-                    
-                    catch (NumberFormatException e) {
-                        System.err.println("가격 변환 오류 :" + e.getMessage());
+                        menus.add(new Menu(menuId, name, price, category, isAvailable, stock));
+                    } catch (NumberFormatException e) {
+                        System.err.println("가격/재고 변환 오류 :" + e.getMessage());
                     }
                 }
             }
-        }
-        
-        catch (FileNotFoundException e) {
-            // 파일이 없을 경우 빈 리스트 반환
+        } catch (FileNotFoundException e) {
+            // 파일이 없으면 빈 리스트 반환
             return new ArrayList<>();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             System.err.println("메뉴 CSV 파일 읽기 오류 :");
         }
         return menus;
@@ -102,29 +89,30 @@ public class MenuRepository {
      * @param menus 메뉴 리스트
      */
     public void saveAll (List<Menu> menus) {
+        // menus.csv 전체를 덮어써서 저장 (헤더 포함)
         File file = new File(MENU_FILE_PATH);
-        
-        // 마찬가지 (한글을 못 씀)
+
         try (BufferedWriter writer = new BufferedWriter(
             new OutputStreamWriter(new FileOutputStream(file, false), StandardCharsets.UTF_8))) {
-            
-            // CSV 헤더 작성
-            writer.write("menuId,name,price,category,IsAvailable");
+
+            writer.write("menuId,name,price,category,IsAvailable,Stock");
             writer.newLine();
-            
+
             for (Menu menu : menus) {
+                // 판매여부는 "판매중"/"판매중지"로 저장
                 String isavailableStr = menu.getIsAvailable() ? "판매중" : "판매중지";
-                String csvLine = String.format("%s,%s,%s,%s,%s",
+                String csvLine = String.format("%s,%s,%s,%s,%s,%d",
                         menu.getMenuId(),
                         menu.getName(),
                         menu.getPrice(),
                         menu.getCategory(),
-                        isavailableStr);
+                        isavailableStr,
+                        menu.getStock());
                 writer.write(csvLine);
                 writer.newLine();
             }
-        }
-        catch (IOException e) {
+
+        } catch (IOException e) {
             System.err.println("메뉴 CSV 파일 쓰기 오류 :" + e.getMessage());
         }
         /**
@@ -144,17 +132,14 @@ public class MenuRepository {
      * @return 저장되었는지 여부
      */
     public boolean save(Menu newMenu) {
-        // findAll 메서드를 호출해서 반환된 모든 Menu 목록을 menus 리스트에 저장
+        // 메뉴 ID가 중복되면 저장하지 않고 false 반환
         List<Menu> menus = findAll();
-        // 메뉴 ID 중복 검사
         if (menus.stream().anyMatch(u -> u.getMenuId().equals(newMenu.getMenuId()))) {
             System.out.println("오류: 이미 존재하는 메뉴 ID입니다.");
             return false;
         }
-        
-        // 새 메뉴 추가
+        // 새 메뉴를 리스트에 추가하고 저장
         menus.add(newMenu);
-        
         saveAll(menus);
         return true;
     }
@@ -199,10 +184,8 @@ public class MenuRepository {
         
         // 정보 업데이트하는 구문
         if (index != -1) {
-            // menus 리스트에 업데이트된 메뉴 정보를 넣음
-            menus.set(index, updatedMenu);
-            // 저장
-            saveAll(menus);
+            menus.set(index, updatedMenu); // 정보 갱신
+            saveAll(menus); // 파일에 저장
             return true;
         }
         return false;
@@ -214,9 +197,9 @@ public class MenuRepository {
      * @return 삭제되었는지 여부
      */
     public boolean delete(String menuId) {
+        // menus.csv에서 ID가 일치하는 메뉴를 찾아 삭제
         List<Menu> menus = findAll();
         boolean removed = menus.removeIf(menu -> menu.getMenuId().equals(menuId));
-        
         if (removed) {
             saveAll(menus);
         }
