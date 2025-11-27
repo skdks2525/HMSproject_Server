@@ -34,7 +34,7 @@ public class Reservation {
     public String getCheckOutDate() { return checkOutDate; }
     public int getGuestNum() { return guestNum; }
     public String getPhoneNumber() { return phoneNumber; }
-    public String reservationStatus() { return reservationStatus; }
+    public String getReservationStatus() { return reservationStatus; }
     public String getCreatedAt() { return createdAt; }
 
     //setter

@@ -36,19 +36,19 @@ public class ReservationRepository {
     
     public synchronized String add(String roomNum, String name, String inDate, String outDate, int guestNum, String phone, String createdAt){
         String resId = "R-" + (System.currentTimeMillis() % 10000); // 간단한 ID 생성
-        String payment = "Unpaid";
+        String ReservationStatus= "Unpaid";
         boolean isNewFile = !new File(RES_FILE_PATH).exists();
         
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RES_FILE_PATH, true))) {
             if (isNewFile) {
-                bw.write("ResID,RoomNum,GuestName,CheckIn,CheckOut,Guests,Phone,Payment,CreatedAt");
+                bw.write("ResID,RoomNum,GuestName,CheckIn,CheckOut,Guests,Phone,ReservationStatus,CreatedAt");
                 bw.newLine();
             } else {
                 bw.newLine();
             }
-            // 7개 필드 저장
+            // 9개 필드 저장
             String line = String.format("%s,%s,%s,%s,%s,%d,%s,%s,%s", 
-                    resId, roomNum, name, inDate, outDate, guestNum, phone, payment, createdAt);
+                    resId, roomNum, name, inDate, outDate, guestNum, phone, ReservationStatus, createdAt);
             bw.write(line);
             return resId;
         }
@@ -59,7 +59,7 @@ public class ReservationRepository {
     
     private boolean rewriteFile(List<Reservation> all) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RES_FILE_PATH))) {
-            bw.write("ResID,RoomNum,GuestName,CheckIn,CheckOut,Guests,Phone,Payment,CreatedAt");
+            bw.write("ResID,RoomNum,GuestName,CheckIn,CheckOut,Guests,Phone,ReservationStatus,CreatedAt");
             for (Reservation r : all) {
                 bw.newLine();
                 bw.write(r.toString());
@@ -68,11 +68,11 @@ public class ReservationRepository {
         } catch (IOException e) { return false; }
     }
     
-    public synchronized boolean updatePayment(String resId, String paymentInfo) {
+    public synchronized boolean updateStatus(String resId, String reservationStatus) {
         List<Reservation> all = findAll();
         for (Reservation r : all) {
             if (r.getReservationId().equals(resId)) {
-                r.setPaymentInfo(paymentInfo);
+                r.setReservationStatus(reservationStatus);
                 return rewriteFile(all);
             }
         }
@@ -81,10 +81,8 @@ public class ReservationRepository {
     
     public synchronized boolean delete(String resId) {
         List<Reservation> all = findAll();
-
-        // 삭제 대상이 있으면 제거하고 파일 다시 쓰기
         if (all.removeIf(r -> r.getReservationId().equals(resId))) {
-            return rewriteFile(all); // [수정] 중복 코드 대신 rewriteFile 호출
+            return rewriteFile(all);
         }
         return false;
     }

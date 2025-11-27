@@ -100,14 +100,12 @@ public class ClientHandler implements Runnable {
                     }
                 
                 case "DELETE_USER":
-                    // 형식: DELETE_USER:id
                     if(parts.length >= 2) {
                         boolean ok = authService.deleteUser(parts[1]);
                         return ok ? "DELETE_SUCCESS" : "DELETE_FAIL";
                     }
                     return "DELETE_FAIL:Format";
                 case "MODIFY_USER":
-                    // 형식(필수): MODIFY_USER:id:name:pw:role:phone  => 총 6토큰, 모두 공백뵘8가
                     {
                         String[] mParts = request.split(":");
                         if(mParts.length != 6) return "MODIFY_FAIL:Format";
@@ -115,6 +113,14 @@ public class ClientHandler implements Runnable {
                         boolean ok = authService.modifyUser(mParts[1], mParts[2], mParts[3], mParts[4], mParts[5]);
                         return ok ? "MODIFY_SUCCESS" : "MODIFY_FAIL";
                     }
+                case "UPDATE_PAYMENT:":
+                    String[] p = request.split(":");
+                    if(p.length == 7){
+                        boolean ok = hotelService.processPayment(
+                        p[1],p[2],p[3],p[4],p[5],p[6]);
+                        return ok ? "PAYMENT_SUCCESS" : "PAYMENT_FAIL";
+                    }
+                    return "ERROR:Format";
                     
                 case "GET_MENUS":
                     java.util.List<Menu> menus = menuService.getAllMenus();

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 public class HotelService {
     private final RoomRepository roomRepo = new RoomRepository();
     private final ReservationRepository resRepo = new ReservationRepository();
+    private final PaymentRepository payRepo = new PaymentRepository();
     private static final Object LOCK = new Object();
 
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -63,11 +64,8 @@ public class HotelService {
 
         for (Reservation r : all) {
             try {
-                // 결제 상태가 'Paid'인 예약만 포함합니다(대소문자 무시).
-                if (r.getPaymentInfo() == null || !r.getPaymentInfo().equalsIgnoreCase("Paid")) continue;
-
-                // 예약의 체크인/체크아웃 문자열을 LocalDate로 파싱합니다.
-                // Reservation 내부에 저장된 날짜 형식이 yyyy-MM-dd 가정입니다.
+                // 결제 상태가 'Paid'인 예약만 포함
+                if (r.getReservationStatus() == null || !r.getReservationStatus().equalsIgnoreCase("Paid")) continue;
                 LocalDate in = LocalDate.parse(r.getCheckInDate(), dateOnlyFormatter);
                 LocalDate out = LocalDate.parse(r.getCheckOutDate(), dateOnlyFormatter);
 
@@ -143,13 +141,31 @@ public class HotelService {
         synchronized (LOCK) { return resRepo.delete(resId); }
     }
 
-    public boolean processPayment(String resId, String paymentInfo) {
+    public boolean processPayment(String resId, String method, String cardNum, String cvc, String expiry, String pw) {
         synchronized (LOCK) {
-            return resRepo.updatePayment(resId, paymentInfo);
+            String payId = "P-" + System.currentTimeMillis();
+            String paymentTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            Payment newPayment = new Payment(payId, resId, method, cardNum, cvc, expiry, pw, paymentTime);
+            boolean paySaved = payRepo.add(newPayment);
+            if (paySaved) {
+                return resRepo.updateStatus(resId, "Confirmed");
+            }
+            return false;
         }
     }
     
-    // --- 헬퍼 메서드 ---
+    public boolean checkIn(String resId){
+        synchronized (LOCK){
+            return resRepo.updateStatus(resId, "CheckedIn");
+        }
+    }
+    
+    public boolean checkou(String resId){
+        synchronized(LOCK){
+            return resRepo.updateStatus(resId, "CheckedOut");
+        }
+    }
+    
     private boolean isRoomAvailable(String roomNum, String reqIn, String reqOut, List<Reservation> allRes) {
         for (Reservation res : allRes) {
             if (res.getRoomNumber().equals(roomNum)) {
@@ -199,8 +215,7 @@ public class HotelService {
         LocalDateTime now = LocalDateTime.now();
 
         for (Reservation r : all) {
-            // 이미 결제했으면 패스
-            if (!"Unpaid".equals(r.getPaymentInfo())) continue;
+            if (!"Unpaid".equals(r.getReservationStatus())) continue;
 
             try {
                 // 예약 생성 시간 파싱

@@ -1,9 +1,13 @@
 server\model\Room.class
+server\repository\PaymentRepository.class
 server\repository\UserRepository.class
+server\model\MenuOrder.class
 server\repository\RoomRepository.class
 server\service\HotelService.class
 server\service\AuthService.class
+server\service\MenuOrderService.class
 server\model\Menu.class
+server\model\Payment.class
 server\model\User.class
 server\net\ClientHandler.class
 server\repository\ReservationRepository.class
@@ -11,3 +15,4 @@ server\service\MenuService.class
 server\net\ServerMain.class
 server\model\Reservation.class
 server\repository\MenuRepository.class
+server\repository\MenuOrderRepository.class
