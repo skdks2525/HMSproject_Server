@@ -87,6 +87,21 @@ public class UserRepository {
             if(needHeader){
                 writer.write("ID,Password,Role,Phone,Name");
                 writer.newLine();
+                writer.flush(); // 헤더와 데이터 사이 줄바꿈 보장
+            }
+            // 파일이 비어있지 않더라도 마지막 줄이 개행으로 끝나지 않은 경우를 방지
+            // (윈도우 메모장 등에서 파일이 잘못 저장된 경우)
+            // 항상 줄의 시작에 데이터가 오도록 강제
+            else {
+                RandomAccessFile raf = new RandomAccessFile(file, "rw");
+                if (raf.length() > 0) {
+                    raf.seek(raf.length() - 1);
+                    int last = raf.read();
+                    if (last != '\n' && last != '\r') {
+                        writer.newLine();
+                    }
+                }
+                raf.close();
             }
             String line = String.format("%s,%s,%s,%s,%s", user.getId(), user.getPassword(), user.getRole(), user.getPhone(), user.getName());
             writer.write(line);

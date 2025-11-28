@@ -60,31 +60,6 @@ public class ReportService {
         return "PAST_OCCUPANCY:" + String.format("%.2f", avgAll) + "|" + String.join(";", dateRows);
     }
 
-    // 개별 객실의 점유율(%) 계산
-    private double getRoomOccupancyRate(Room room, List<Reservation> reservations, LocalDate start, LocalDate end) {
-    /**
-     * 개별 객실의 점유율(%) 계산
-     * - 지정 기간 내 해당 객실이 예약된 일수 / 전체 일수 × 100
-     * - Confirmed 예약만 집계
-     */
-    private double getRoomOccupancyRate(Room room, List<Reservation> reservations, LocalDate start, LocalDate end) {
-        long totalDays = end.toEpochDay() - start.toEpochDay() + 1;
-        long reservedDays = 0;
-        String roomNum = room.getRoomNumber();
-        for (Reservation r : reservations) {
-            if (!roomNum.equals(r.getRoomNumber())) continue;
-            LocalDate resStart = LocalDate.parse(r.getCheckInDate());
-            LocalDate resEnd = LocalDate.parse(r.getCheckOutDate());
-            // 예약과 기간이 겹치는 일수만큼 합산
-            LocalDate overlapStart = resStart.isAfter(start) ? resStart : start;
-            LocalDate overlapEnd = resEnd.isBefore(end) ? resEnd : end;
-            if (!overlapStart.isAfter(overlapEnd)) {
-                reservedDays += (overlapEnd.toEpochDay() - overlapStart.toEpochDay() + 1);
-            }
-        }
-        return totalDays > 0 ? (reservedDays * 100.0 / totalDays) : 0.0;
-    }
-
         // 현재 점유율 요청 핸들러: 오늘 투숙 중인 객실 표
         public String handleCurrentOccupancyRequest() {
         /**
