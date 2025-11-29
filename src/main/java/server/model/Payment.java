@@ -12,9 +12,10 @@ public class Payment {
     private String cvc;            // CVC
     private String expiryDate;     // 유효기간
     private String password;       // 비번 앞 2자리
+    private int amount;            // 결제 내역
     private String paymentTime;      // 결제 일시
 
-    public Payment(String paymentId, String reservationId, String method, String cardNumber, String cvc, String expiryDate, String password, String paymentTime) {
+    public Payment(String paymentId, String reservationId, String method, String cardNumber, String cvc, String expiryDate, String password, int amount, String paymentTime) {
         this.paymentId = paymentId;
         this.reservationId = reservationId;
         this.method = method;
@@ -22,16 +23,23 @@ public class Payment {
         this.cvc = cvc;
         this.expiryDate = expiryDate;
         this.password = password;
+        this.amount = amount;
         this.paymentTime = paymentTime;
     }
 
     // Getters
     public String getPaymentId() { return paymentId; }
     public String getReservationId() { return reservationId; }
+    public int getAmount() { return amount; }
+    public String getMethod() { return method; }
+    public String getCardNumber() { return cardNumber; }
+    public String getCvc() { return cvc; }
+    public String getExpiryDate() { return expiryDate; }
+    public String getPassword() { return password; }
 
     @Override
     public String toString() {
-        return String.format("%s,%s,%s,%s,%s,%s,%s,%s",
-                paymentId, reservationId, method, cardNumber, cvc, expiryDate, password, paymentTime);
+        // ID,예약ID,수단,번호,CVC,유효,비번,금액,시간
+        return paymentId + "," + reservationId + "," + method + "," + cardNumber + "," + cvc + "," + expiryDate + "," + password + "," + amount + "," + paymentTime;
     }
 }

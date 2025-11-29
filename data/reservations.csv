@@ -1,5 +1,4 @@
 ResID,RoomNum,GuestName,CheckIn,CheckOut,Guests,Phone,ReservationStatus,CreatedAt,Request
-R-6486,101,admin,2025-11-29,2025-11-30,1,010-0000-0000, Confirmed, 2025-11-29 15:17:06, 
 R-1001,101,John,2025-10-01,2025-10-02,2,010-1111-1111, Confirmed, 2025-10-01 10:00:00, 
 R-1003,103,Michael,2025-10-03,2025-10-04,2,010-3333-3333, Confirmed, 2025-10-03 10:00:00, 
 R-1005,202,David,2025-10-05,2025-10-06,2,010-5555-5555, Confirmed, 2025-10-05 10:00:00, 

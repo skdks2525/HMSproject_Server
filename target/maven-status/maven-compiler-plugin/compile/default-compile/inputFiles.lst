@@ -3,7 +3,6 @@ C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\mod
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\model\Payment.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\model\Reservation.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\model\Room.java
-C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\model\RoomSchedule.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\model\User.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\net\ClientHandler.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\net\ServerMain.java
@@ -12,7 +11,6 @@ C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\rep
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\repository\PaymentRepository.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\repository\ReservationRepository.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\repository\RoomRepository.java
-C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\repository\ScheduleRepository.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\repository\UserRepository.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\service\AuthService.java
 C:\Users\skdks\OneDrive\문서\GitHub\HMSproject_Server\src\main\java\server\service\HotelService.java

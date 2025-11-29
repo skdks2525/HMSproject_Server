@@ -1,9 +1,19 @@
 package server.net;
-import server.service.*;
-import server.model.*;
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.List;
+
+import server.model.Menu;
+import server.model.Room;
+import server.model.User;
+import server.service.AuthService;
+import server.service.HotelService;
+import server.service.MenuOrderService;
+import server.service.MenuService;
+import server.service.ReportService;
 
 /**
  *  각 클라이언트 연결을 개별 스레드에서 처리하는 클래스 (Runnable 인터페이스 구현)
@@ -183,16 +193,36 @@ public class ClientHandler implements Runnable {
                         boolean ok = authService.modifyUser(mParts[1], mParts[2], mParts[3], mParts[4], mParts[5]);
                         return ok ? "MODIFY_SUCCESS" : "MODIFY_FAIL";
                     }
+                    
                 case "UPDATE_PAYMENT":
+                    // [수정] 프로토콜 변경: UPDATE_PAYMENT:ResID:Method:Card:CVC:Expiry:PW:Amount
+                    // 총 8개 토큰이어야 함 (기존 7개 + Amount 1개)
                     String[] p = request.split(":");
-                    if(p.length == 7){
-                        boolean ok = hotelService.processPayment(
-                        p[1],p[2],p[3],p[4],p[5],p[6]);
-                        return ok ? "PAYMENT_SUCCESS" : "PAYMENT_FAIL";
-                    }
-                    else {
+
+                    if (p.length == 8) {
+                        try {
+                            // 1. 마지막 데이터(금액) 파싱
+                            int amount = Integer.parseInt(p[7]);
+
+                            // 2. HotelService 호출 (amount 인자 추가됨)
+                            boolean ok = hotelService.processPayment(
+                                    p[1], // ResID
+                                    p[2], // Method
+                                    p[3], // CardNum
+                                    p[4], // CVC
+                                    p[5], // Expiry
+                                    p[6], // PW
+                                    amount // [추가] Amount
+                            );
+
+                            return ok ? "PAYMENT_SUCCESS" : "PAYMENT_FAIL";
+
+                        } catch (NumberFormatException e) {
+                            return "ERROR:Invalid Amount Format"; // 금액이 숫자가 아닐 경우 에러 처리
+                        }
+                    } else {
                         System.out.println("[Server] 결제 요청 포맷 오류. 받은 개수: " + p.length);
-                        return "ERROR:Format Error (Expected 7 parts)";
+                        return "ERROR:Format Error (Expected 8 parts)";
                     }
                     
                 case "GET_MENUS":
@@ -348,6 +378,47 @@ public class ClientHandler implements Runnable {
                                 }
                                 return allOk ? "ORDER_SUCCESS" : "ORDER_PARTIAL_FAIL:재고부족";
                             }
+                            
+                case "GET_MENU_ORDERS_BY_GUEST": {
+                    // 형식: GET_MENU_ORDERS_BY_GUEST:GuestName
+                    String[] q = request.split(":", 2);
+                    if (q.length != 2) return "MENU_ORDERS:";
+                    String guest = q[1];
+                    java.util.List<server.model.MenuOrder> all = menuOrderService.getAllOrders();
+                    StringBuilder msb = new StringBuilder("MENU_ORDERS:");
+                    boolean first = true;
+                    for (server.model.MenuOrder mo : all) {
+                        if (mo.getGuestName().equals(guest)) {
+                            if (!first) msb.append("|");
+                            msb.append(mo.getSaleId()).append(",").append(mo.getTotalPrice()).append(",").append(mo.getPayment());
+                            first = false;
+                        }
+                    }
+                    return msb.toString();
+                }
+                
+                case "GET_MENU_ORDERS_BY_DATE_RANGE": {
+                    // 형식: GET_MENU_ORDERS_BY_DATE_RANGE:GuestName:CheckInDate:CheckOutDate
+                    String[] q = request.split(":");
+                    if (q.length != 4) return "MENU_ORDERS_DATE:";
+                    String guest = q[1];
+                    String checkInDate = q[2];
+                    String checkOutDate = q[3];
+                    java.util.List<server.model.MenuOrder> all = menuOrderService.getAllOrders();
+                    StringBuilder msb = new StringBuilder("MENU_ORDERS_DATE:");
+                    boolean first = true;
+                    java.time.LocalDateTime checkIn = java.time.LocalDateTime.parse(checkInDate + " 00:00:00", java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                    java.time.LocalDateTime checkOut = java.time.LocalDateTime.parse(checkOutDate + " 23:59:59", java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                    for (server.model.MenuOrder mo : all) {
+                        if (mo.getGuestName().equals(guest) && mo.getOrderTime().isAfter(checkIn) && mo.getOrderTime().isBefore(checkOut)) {
+                            if (!first) msb.append("|");
+                            String foodNamesStr = String.join("/", mo.getFoodNames());
+                            msb.append(foodNamesStr).append(",").append(mo.getTotalPrice()).append(",").append(mo.getPayment());
+                            first = false;
+                        }
+                    }
+                    return msb.toString();
+                }
                   
                 case "CHECK_ALL_ROOM_STATUS":
                     String[] statusParts = request.split(":");
@@ -358,14 +429,18 @@ public class ClientHandler implements Runnable {
                         
                 case "GET_RES_BY_NAME":
                     String[] nameParts = request.split(":");
-                    if (parts.length >= 2) {
+                    if (nameParts.length >= 2) {
+                        // 1. 가격과 정원이 포함된 데이터를 가져옵니다.
                         List<String> list = hotelService.getReservationsWithRoomInfo(nameParts[1]);
+
                         StringBuilder resSb = new StringBuilder("RES_LIST:");
-                        for (Reservation r : hotelService.getReservationsByName(parts[1])) {
-                            resSb.append(r.toString()).append("|");           
+
+                        // [수정] 위에서 가져온 'list'를 그대로 사용하여 응답을 만듭니다.
+                        for (String line : list) {
+                            resSb.append(line).append("|");
                         }
                         return resSb.toString();
-                    }    
+                    }
                     return "ERROR:Format";
                         
                 case "GET_AVAILABLE_ROOMS":
@@ -375,6 +450,34 @@ public class ClientHandler implements Runnable {
                         availSb.append(r.toString()).append("/");
                     }
                     return availSb.toString();
+                    
+                case "PAY_AND_RESERVE":
+                    String[] payParts = request.split(":");
+        
+                    if (payParts.length == 12) {
+                        String roomNum = payParts[1];
+                        String name = payParts[2];
+                        String inDate = payParts[3];
+                        String outDate = payParts[4];
+                        int guestNum;
+                        
+                        try {
+                            guestNum = Integer.parseInt(payParts[5]);
+                        }
+                        catch (NumberFormatException e) {
+                            return "FAIL:InvalidGuestNum";
+                        }             
+                        String phone = payParts[6];
+                        String reqNote = payParts[7]; // 요청사항
+                        String cardNum = payParts[8];
+                        String cvc = payParts[9];
+                        String expiry = payParts[10];
+                        String cardPw = payParts[11];
+                        String result = hotelService.createReservationWithPayment(
+                                roomNum, name, inDate, outDate, guestNum, phone, reqNote, cardNum, cvc, expiry, cardPw);
+                        return result;
+                    }
+                    return "ERROR:Format (Expected 11 parts for PAY_AND_RESERVE)";
                     
                 case "CHECK_AVAILABILITY":
                     String[] checkParts = request.split(":");
@@ -439,6 +542,14 @@ public class ClientHandler implements Runnable {
                         if (reqParts.length == 3) {
                             boolean ok = hotelService.updateReservationRequest(reqParts[1], reqParts[2]);
                             return ok ? "UPDATE_SUCCESS" : "UPDATE_FAIL";
+                        }
+                        return "ERROR:Format";
+                            
+                    case "MANAGE_CLEANING":
+                        if (parts.length == 2) {
+                            String rNum = parts[1];
+                            String result = hotelService.toggleCleaningStatus(rNum);
+                            return result; // "SUCCESS:SetToCleaning" or "SUCCESS:SetToEmpty" or "FAIL..."
                         }
                         return "ERROR:Format";
                     
