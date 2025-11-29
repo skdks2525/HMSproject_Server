@@ -6,6 +6,7 @@ server\repository\RoomRepository.class
 server\service\HotelService.class
 server\service\AuthService.class
 server\service\MenuOrderService.class
+server\service\ReportService.class
 server\model\Menu.class
 server\model\Payment.class
 server\model\User.class

@@ -1,9 +1,9 @@
 package server.net;
 import server.service.*;
-//import cse.oop2.hms_server.src.main.server.service.ReservationService;
 import server.model.*;
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 /**
  *  각 클라이언트 연결을 개별 스레드에서 처리하는 클래스 (Runnable 인터페이스 구현)
@@ -56,6 +56,8 @@ public class ClientHandler implements Runnable {
             String command = parts[0].trim();
             
             switch(command){
+                //------------------------------------------------
+                //여기서 부터 로그인 case문
                 case "GET_MENU_SALES":
                     // 형식: GET_MENU_SALES:yyyy-MM-dd:yyyy-MM-dd
                     if (parts.length == 3) {
@@ -93,12 +95,36 @@ public class ClientHandler implements Runnable {
                     }    
                     else{    
                         return "ERROR:Invalid LOGIN format"; // 형식 오류
-                    }    
-                case "CHECKIN":
+                    }                
+                case "GET_DASHBOARD":
+                    if(parts.length == 2){
+                        return hotelService.getRoomDashboard(parts[1]);
+                    }
+                    return hotelService.getRoomDashboard(java.time.LocalDate.now().toString());
                     
-                default:    
-                    System.out.println("❌ [오류] 알 수 없는 명령어: [" + command + "]");
-                    return "ERROR:Unknown command " + command;  
+                case "CHECK_IN":
+                    String[] inParts = request.split(":");
+                    if (inParts.length >= 2) {
+                        boolean ok = hotelService.checkIn(inParts[1]);
+                        return ok ? "SUCCESS" : "FAIL";
+                    }
+                    return "ERROR:Format";
+
+                case "CHECK_OUT":
+                    String[] outParts = request.split(":");
+                    if (outParts.length >= 2) {
+                        boolean ok = hotelService.checkOut(outParts[1]);
+                        return ok ? "SUCCESS" : "FAIL";
+                    }
+                    return "ERROR:Format";
+                    
+                case "UPDATE_RESERVATION_STATUS":
+                    String[] Parts = request.split(":");
+                    if(Parts.length == 3){
+                        boolean ok = hotelService.updateReservationStatus(Parts[1], Parts[2]);
+                        return ok ? "UPDATE_SUCCESS" : "UPDATE_FAIL";
+                    }
+                    return "ERROR:Format";
                     
                 case "GET_USERS":
                     //서비스에서 모든 유저 가져오기
@@ -322,25 +348,21 @@ public class ClientHandler implements Runnable {
                                 }
                                 return allOk ? "ORDER_SUCCESS" : "ORDER_PARTIAL_FAIL:재고부족";
                             }
-                case "GET_ALL_ROOMS":
-                    StringBuilder roomSb = new StringBuilder("ROOM_LIST:");
-                    for(Room r : hotelService.getAllRooms()){
-                        roomSb.append(r.toString()).append("/");
-                    }
-                    return roomSb.toString();
-                    
-                case "GET_ROOM":
-                    if (parts.length == 2) {
-                        Room r = hotelService.getRoom(parts[1]);
-                        return (r != null) ? "ROOM_INFO:" + r.toString() : "ERROR:Not Found";
-                    }
+                  
+                case "CHECK_ALL_ROOM_STATUS":
+                    String[] statusParts = request.split(":");
+                    if (statusParts.length == 3) {  
+                        return hotelService.getRoomStatusList(statusParts[1], statusParts[2]);
+                    }   
                     return "ERROR:Format";
                         
                 case "GET_RES_BY_NAME":
-                    if (parts.length == 2) {
+                    String[] nameParts = request.split(":");
+                    if (parts.length >= 2) {
+                        List<String> list = hotelService.getReservationsWithRoomInfo(nameParts[1]);
                         StringBuilder resSb = new StringBuilder("RES_LIST:");
                         for (Reservation r : hotelService.getReservationsByName(parts[1])) {
-                            resSb.append(r.toString()).append("/");           
+                            resSb.append(r.toString()).append("|");           
                         }
                         return resSb.toString();
                     }    
@@ -364,17 +386,17 @@ public class ClientHandler implements Runnable {
                     
                case "ADD_RESERVATION":
                     // ADD_RESERVATION:타입:이름:입실:퇴실:인원:폰
-                    String[] resParts = request.split(":");
+                    String[] resParts = request.split(":", -1);
                     
-                    if (resParts.length == 7) { 
-                        // createReservationByType 호출 (자동 배정 로직)
-                        String assignedRoom = hotelService.createReservationByType(
+                    if (resParts.length == 8) {
+                        String assignedRoom = hotelService.createReservationByRoomNum(
                             resParts[1], // Type
                             resParts[2], // Name
                             resParts[3], // In
                             resParts[4], // Out
                             Integer.parseInt(resParts[5]), // GuestNum
-                            resParts[6]  // Phone
+                            resParts[6],  // Phone
+                            resParts[7]
                         );
                         
                         if (assignedRoom != null) {
@@ -383,7 +405,7 @@ public class ClientHandler implements Runnable {
                             return "RESERVE_FAIL:No Room Available";
                         }
                     }
-                    return "ERROR:Format (Expected 7 parts)";
+                    return "ERROR:Format (Expected 8 parts)";
                     
                 case "DELETE_RESERVATION":
                     if (parts.length == 2) {
@@ -391,6 +413,38 @@ public class ClientHandler implements Runnable {
                         return ok ? "DELETE_SUCCESS" : "DELETE_FAIL";
                     }
                     return "ERROR:Format";
+                    
+                    case "ADD_ROOM":
+                    // ADD_ROOM:번호:타입:가격:인원:설명 (6개)
+                    String[] ar = request.split(":"); 
+                    if (ar.length == 6) {
+                        boolean ok = hotelService.addRoom(ar[1], ar[2], 
+                                Integer.parseInt(ar[3]), Integer.parseInt(ar[4]), ar[5]);
+                        return ok ? "ADD_SUCCESS" : "ADD_FAIL";
+                    }
+                    return "ERROR:Format";
+
+                case "UPDATE_ROOM":
+                    // UPDATE_ROOM:번호:타입:가격:인원:설명 (6개)
+                    String[] ur = request.split(":");
+                    if (ur.length == 6) {
+                        boolean ok = hotelService.updateRoom(ur[1], ur[2], 
+                                Integer.parseInt(ur[3]), Integer.parseInt(ur[4]), ur[5]);
+                        return ok ? "UPDATE_SUCCESS" : "UPDATE_FAIL";
+                    }
+                    
+                    case "UPDATE_GUEST_REQ":
+                        String[] reqParts = request.split(":", 3);
+                        
+                        if (reqParts.length == 3) {
+                            boolean ok = hotelService.updateReservationRequest(reqParts[1], reqParts[2]);
+                            return ok ? "UPDATE_SUCCESS" : "UPDATE_FAIL";
+                        }
+                        return "ERROR:Format";
+                    
+                default:    
+                    System.out.println("❌ [오류] 알 수 없는 명령어: [" + command + "]");
+                    return "ERROR:Unknown command " + command;  
             }
         }
 

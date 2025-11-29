@@ -9,15 +9,11 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class HotelService {
-        public RoomRepository getRoomRepository() {
-            return roomRepo;
-        }
-        public ReservationRepository getReservationRepository() {
-            return resRepo;
-        }
+
     private final RoomRepository roomRepo = new RoomRepository();
     private final ReservationRepository resRepo = new ReservationRepository();
-    private final PaymentRepository payRepo = new PaymentRepository();
+    private final PaymentRepository payRepo = new PaymentRepository();    
+    private final ScheduleRepository scheduleRepo = new ScheduleRepository();
     private static final Object LOCK = new Object();
 
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -96,50 +92,86 @@ public class HotelService {
         return salesMap;
     }
 
-// [기능 1] 예약 가능한 방 타입 목록 반환
+    // 예약 가능한 방 타입 목록 반환
     public String getAvailableRoomTypes(String reqIn, String reqOut) {
         synchronized (LOCK) {
             List<String> availableTypes = new ArrayList<>();
-            List<Reservation> allRes = resRepo.findAll();
+            List<Reservation> allRes = resRepo.findAll();            
+            List<RoomSchedule> allSched = scheduleRepo.findAll();
 
-            // 각 타입의 대표 방 하나씩만 체크 (간소화 버전)
-            // 실제로는 해당 타입의 모든 방을 검사해야 함
-            if (isRoomAvailable("101", reqIn, reqOut, allRes)) availableTypes.add("STD");
-            if (isRoomAvailable("201", reqIn, reqOut, allRes)) availableTypes.add("DLX");
-            if (isRoomAvailable("301", reqIn, reqOut, allRes)) availableTypes.add("STE");
+            // 각 타입의 대표 방번호로 가능여부 체크 
+            if (isRoomAvailable("101", reqIn, reqOut, allRes, allSched)) availableTypes.add("STD");
+            if (isRoomAvailable("201", reqIn, reqOut, allRes, allSched)) availableTypes.add("DLX");
+            if (isRoomAvailable("301", reqIn, reqOut, allRes, allSched)) availableTypes.add("STE");
 
             return String.join(",", availableTypes);
         }
     }
+    
+    public String getRoomStatusList(String reqIn, String reqOut) {
+        StringBuilder sb = new StringBuilder("ROOM_STATUS_LIST:");
+        List<Room> rooms = roomRepo.findAll();
+        List<Reservation> allRes = resRepo.findAll();
+        List<RoomSchedule> schedules = scheduleRepo.findAll(); //객실의 스케줄 여부도 체크
 
-    // 예약 생성 (현재 시간)
-    public String createReservationByType(String type, String name, String reqIn, String reqOut, int guestNum, String phone) {
+        for (Room r : rooms) {
+            boolean isBooked = false;
+
+            // 스케줄 확인 (청소 중이면 예약 불가)
+            for (RoomSchedule sc : schedules) {
+                if (sc.getRoomNumber().equals(r.getRoomNumber())) {
+                    if (isDateIncluded(reqIn, sc.getStartDate(), sc.getEndDate()) ||
+                        isDateIncluded(reqOut, sc.getStartDate(), sc.getEndDate()) ||
+                        isDateIncluded(sc.getStartDate(), reqIn, reqOut)) { 
+                        isBooked = true;
+                        break;
+                    }
+                }
+            }
+
+            // 예약 가능여부 확인
+            if (!isBooked) {
+                for (Reservation res : allRes) {
+                    if (res.getRoomNumber().equals(r.getRoomNumber())) {
+                        // 체크아웃 되었다면 예약 가능)
+                        if ("CheckedOut".equals(res.getReservationStatus())) continue;
+                        
+                        // 날짜 겹침 확인
+                        if (isDateOverlapping(reqIn, reqOut, res.getCheckInDate(), res.getCheckOutDate())) {
+                            isBooked = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            String status = isBooked ? "BOOKED" : "AVAILABLE";
+            
+            // 포맷: 방번호,타입,가격,인원,설명,상태
+            sb.append(String.format("%s,%s,%d,%d,%s,%s|", 
+                    r.getRoomNumber(), r.getType(), r.getPrice(), r.getCapacity(), r.getDescription(), status));
+        }
+        return sb.toString();
+    }
+
+   // 예약 생성
+    public String createReservationByRoomNum(String roomNum, String name, String reqIn, String reqOut, int guestNum, String phone, String request) {
         synchronized (LOCK) {
-            List<Room> targetRooms = new ArrayList<>();
-            for (Room r : roomRepo.findAll()) {
-                if (convertCodeToType(type).equalsIgnoreCase(r.getType())) {
-                    targetRooms.add(r);
-                }
-            }
-            if (targetRooms.isEmpty()) return null;
+            // 1. 해당 방 번호가 실존하는지 확인
+            Room room = roomRepo.findByNumber(roomNum);
+            if (room == null) return null; // 없는 방
 
+            // 2. 해당 방의 예약 가능 여부(날짜 겹침, 스케줄) 확인
             List<Reservation> allRes = resRepo.findAll();
-            String availableRoomNum = null;
-
-            for (Room room : targetRooms) {
-                if (isRoomAvailable(room.getRoomNumber(), reqIn, reqOut, allRes)) {
-                    availableRoomNum = room.getRoomNumber();
-                    break;
-                }
-            }
-
-            if (availableRoomNum != null) {
-                // 현재 시간을 생성일로 저장
+            List<RoomSchedule> allSched = scheduleRepo.findAll();
+            
+            if (isRoomAvailable(roomNum, reqIn, reqOut, allRes, allSched)) {
+                // 3. 예약 저장
                 String nowStr = LocalDateTime.now().format(formatter);
-                String resId = resRepo.add(availableRoomNum, name, reqIn, reqOut, guestNum, phone, nowStr);
-                return (resId != null) ? availableRoomNum : null;
+                String resId = resRepo.add(roomNum, name, reqIn, reqOut, guestNum, phone, nowStr, request);
+                return (resId != null) ? roomNum : null;
             }
-            return null;
+            return null; // 이미 예약됨
         }
     }
     
@@ -166,21 +198,59 @@ public class HotelService {
         }
     }
     
-    public boolean checkou(String resId){
+    public boolean checkOut(String resId){
         synchronized(LOCK){
             return resRepo.updateStatus(resId, "CheckedOut");
         }
     }
     
-    private boolean isRoomAvailable(String roomNum, String reqIn, String reqOut, List<Reservation> allRes) {
+    public List<String> getReservationsWithRoomInfo(String guestName){
+        List<Reservation> myReservations = resRepo.findAll().stream().filter(
+        r -> r.getGuestName().equals(guestName)).collect(Collectors.toList());
+
+        List<Room> allRooms = roomRepo.findAll();
+        List<String> resultList = new ArrayList<>();
+        
+        for(Reservation res : myReservations){
+            String resStr = res.toString();
+            String roomType = "Unknown";
+            int roomPrice = 0;
+            
+            for (Room r : allRooms){
+            
+                if(r.getRoomNumber().equals(res.getRoomNumber())){
+                    roomType = r.getType();
+                    roomPrice = r.getPrice();
+                    break;
+                }
+                resultList.add(resStr = "," + roomType + "," + roomPrice);
+            }
+        } 
+        return resultList;
+    }
+    
+    private boolean isRoomAvailable(String roomNum, String reqIn, String reqOut, List<Reservation> allRes, List<RoomSchedule> allSched) {
+        // 예약 겹침 확인
         for (Reservation res : allRes) {
             if (res.getRoomNumber().equals(roomNum)) {
-                // 겹치면 false (예약 불가)
+                // 체크아웃 된 건은 무시 (예약 가능)
+                if ("CheckedOut".equals(res.getReservationStatus())) continue;
+
                 if (isDateOverlapping(reqIn, reqOut, res.getCheckInDate(), res.getCheckOutDate())) {
-                    return false; 
+                    return false; // 겹침
                 }
             }
         }
+        
+        // 스케줄(청소/수리) 겹침 확인
+        for (RoomSchedule sc : allSched) {
+            if (sc.getRoomNumber().equals(roomNum)) {
+                if (isDateOverlapping(reqIn, reqOut, sc.getStartDate(), sc.getEndDate())) {
+                    return false; // 청소/수리 중이라 예약 불가
+                }
+            }
+        }
+        
         return true;
     }
 
@@ -249,37 +319,97 @@ public class HotelService {
         }
     }   
     
-    public String getRoomDashboard() {
+    public String getRoomDashboard(String targetDate) {
         StringBuilder sb = new StringBuilder("DASHBOARD_LIST:");
         List<Room> rooms = roomRepo.findAll();
         List<Reservation> reservations = resRepo.findAll();
+        List<RoomSchedule> schedules = scheduleRepo.findAll();
         
         for (Room r : rooms) {
             String status = "Empty";
             String guestName = "-";
             String resId = "-";
-            // [추가] 기본값 설정
             int guestNum = 0; 
             String phone = "-";
-            
-            for (Reservation res : reservations) {
-                if (res.getRoomNumber().equals(r.getRoomNumber())) {
-                    // 체크아웃 된 건 제외하고 현재 유효한 예약 표시
-                    if (!"CheckedOut".equals(res.getReservationStatus())) {
-                         status = res.getReservationStatus(); 
-                         guestName = res.getGuestName();
-                         resId = res.getReservationId();
-                         // [추가] 정보 가져오기
-                         guestNum = res.getGuestNum();
-                         phone = res.getPhoneNumber();
-                         break; 
+            String inDate = "-"; 
+            String outDate = "-";
+            String note = r.getDescription();
+            String detail = "-"; // 요청사항 또는 스케줄 내용
+
+            // 1. 스케줄 확인 (청소, 수리 등) -> 예약보다 우선순위 높음
+            for (RoomSchedule sc : schedules) {
+                if (sc.getRoomNumber().equals(r.getRoomNumber())) {
+                    if (isDateIncluded(targetDate, sc.getStartDate(), sc.getEndDate())) {
+                        status = sc.getType();    // Cleaning, Maintenance...
+                        guestName = sc.getNote(); // 이름 자리에 메모 표시
+                        resId = sc.getScheduleId();
+                        inDate = sc.getStartDate();
+                        outDate = sc.getEndDate();
+                        detail = "일정: " + sc.getNote();
+                        break; 
                     }
                 }
             }
-            // 포맷: 방번호,타입,가격,상태,고객명,예약ID,인원,폰 (8개 정보)
-            sb.append(String.format("%s,%s,%d,%s,%s,%s,%d,%s/", 
-                    r.getRoomNumber(), r.getType(), r.getPrice(), status, guestName, resId, guestNum, phone));
+
+            // 2. 예약 확인 (스케줄이 없을 때만)
+            if ("Empty".equals(status)) {
+                for (Reservation res : reservations) {
+                    if (res.getRoomNumber().equals(r.getRoomNumber())) {
+                        // 날짜 범위 확인: 입실일 <= 조회일 < 퇴실일
+                        // (퇴실일 당일은 아직 체크아웃 전이라도, 숙박의 관점에서는 오후에 빈 방이 됨)
+                        if (isDateIncluded(targetDate, res.getCheckInDate(), res.getCheckOutDate()) 
+                                && targetDate.compareTo(res.getCheckOutDate()) < 0) {
+                            
+                                status = res.getReservationStatus(); 
+                                guestName = res.getGuestName();
+                                resId = res.getReservationId();
+                                guestNum = res.getGuestNum();
+                                phone = res.getPhoneNumber();
+                                inDate = res.getCheckInDate();
+                                outDate = res.getCheckOutDate();
+                                detail = res.getCustomerRequest(); // 요청사항
+                                break; 
+                        }
+                    }
+                }
+            }
+            
+            sb.append(String.format("%s,%s,%d,%s,%s,%s,%d,%s,%s,%s,%s,%s|", 
+                    r.getRoomNumber(), r.getType(), r.getPrice(), status, guestName, 
+                    resId, guestNum, phone, inDate, outDate, note, detail));
         }
         return sb.toString();
+    }
+    
+    public boolean addRoom(String num, String type, int price, int cap, String desc) {
+        return roomRepo.add(new Room(num, type, price, cap, desc));
+    }
+
+    public boolean updateRoom(String num, String type, int price, int cap, String desc) {
+        return roomRepo.update(new Room(num, type, price, cap, desc));
+    }
+    
+    private boolean isDateIncluded(String target, String start, String end) {
+        return target.compareTo(start) >= 0 && target.compareTo(end) <= 0;
+    }
+    
+    public boolean updateReservationRequest(String resId, String newRequest) {
+        synchronized (LOCK) {
+            return resRepo.updateRequest(resId, newRequest);
+        }
+    }
+    
+    public boolean updateReservationStatus(String resId, String newStatus) {
+        synchronized (LOCK) {
+            return resRepo.updateStatus(resId, newStatus);
+        }
+    }
+    
+    public ReservationRepository getReservationRepository(){
+        return resRepo;
+    }
+    
+    public RoomRepository getRoomRepository(){
+        return roomRepo;
     }
 }
