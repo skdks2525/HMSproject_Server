@@ -66,8 +66,7 @@ public class ClientHandler implements Runnable {
             String command = parts[0].trim();
             
             switch(command){
-                //------------------------------------------------
-                //여기서 부터 로그인 case문
+
                 case "GET_MENU_SALES":
                     // 형식: GET_MENU_SALES:yyyy-MM-dd:yyyy-MM-dd
                     if (parts.length == 3) {
@@ -195,16 +194,15 @@ public class ClientHandler implements Runnable {
                     }
                     
                 case "UPDATE_PAYMENT":
-                    // [수정] 프로토콜 변경: UPDATE_PAYMENT:ResID:Method:Card:CVC:Expiry:PW:Amount
-                    // 총 8개 토큰이어야 함 (기존 7개 + Amount 1개)
+                    // 프로토콜: UPDATE_PAYMENT:ResID:Method:Card:CVC:Expiry:PW:Amount
                     String[] p = request.split(":");
 
                     if (p.length == 8) {
                         try {
-                            // 1. 마지막 데이터(금액) 파싱
+                            // 마지막 데이터(금액) 파싱
                             int amount = Integer.parseInt(p[7]);
 
-                            // 2. HotelService 호출 (amount 인자 추가됨)
+                            // HotelService 호출
                             boolean ok = hotelService.processPayment(
                                     p[1], // ResID
                                     p[2], // Method
@@ -212,7 +210,7 @@ public class ClientHandler implements Runnable {
                                     p[4], // CVC
                                     p[5], // Expiry
                                     p[6], // PW
-                                    amount // [추가] Amount
+                                    amount // Amount
                             );
 
                             return ok ? "PAYMENT_SUCCESS" : "PAYMENT_FAIL";
@@ -336,7 +334,6 @@ public class ClientHandler implements Runnable {
                 }
                 
                             case "ORDER_MENU": {
-                                // 프로토콜: ORDER_MENU:GuestName:TotalPrice:Payment:FoodName1|FoodName2|...
                                 String[] orderParts = request.split(":", 5);
                                 if (orderParts.length != 5) return "ORDER_FAIL:Format";
                                 String guestName = orderParts[1];
@@ -430,12 +427,12 @@ public class ClientHandler implements Runnable {
                 case "GET_RES_BY_NAME":
                     String[] nameParts = request.split(":");
                     if (nameParts.length >= 2) {
-                        // 1. 가격과 정원이 포함된 데이터를 가져옵니다.
+                        // 가격과 정원수이 포함된 데이터를 가져옴
                         List<String> list = hotelService.getReservationsWithRoomInfo(nameParts[1]);
 
                         StringBuilder resSb = new StringBuilder("RES_LIST:");
 
-                        // [수정] 위에서 가져온 'list'를 그대로 사용하여 응답을 만듭니다.
+                        // 위에서 가져온 'list'를 그대로 사용하여 응답을 만듬
                         for (String line : list) {
                             resSb.append(line).append("|");
                         }
@@ -444,7 +441,7 @@ public class ClientHandler implements Runnable {
                     return "ERROR:Format";
                         
                 case "GET_AVAILABLE_ROOMS":
-                    // 날짜 로직 생략, 전체 방 목록 반환 (추후 구현)
+                    // 전체 방 목록 반환
                     StringBuilder availSb = new StringBuilder("ROOM_LIST:");
                     for (Room r : hotelService.getAllRooms()) {
                         availSb.append(r.toString()).append("/");
